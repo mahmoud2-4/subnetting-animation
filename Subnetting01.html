@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subnetting Animation — Class A / B / C</title>
+<style>
+  :root{
+    --bg:#070b16; --panel:#101728; --line:#1e2a44;
+    --txt:#e6edf7; --muted:#7d8ba8;
+    --net:#22d3ee; --sub:#f59e0b; --host:#34d399; --res:#c084fc;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:22px 16px 60px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background:#070b16;
+    background-image:radial-gradient(900px 520px at 50% -18%, #12233f 0%, rgba(7,11,22,0) 70%);
+    color:var(--txt); min-height:100vh;
+  }
+  .wrap{max-width:1080px;margin:0 auto;}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:.4px;}
+  h1 span{color:var(--net);}
+  .tag{color:var(--muted);font-size:12px;margin-bottom:20px;}
+
+  .panel{
+    background:linear-gradient(180deg,#101728,#0c1220);
+    border:1px solid var(--line); border-radius:14px;
+    padding:16px 18px; margin-bottom:16px;
+    box-shadow:0 12px 34px rgba(0,0,0,.45);
+    overflow-x:auto;
+  }
+  .panel-title{
+    font-size:10px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:14px;
+  }
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;}
+  .field{display:flex;flex-direction:column;gap:7px;}
+  .field > label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+  .pills{display:flex;gap:6px;}
+  .pill{
+    padding:8px 18px;border-radius:9px;border:1px solid #26344f;background:#0d1524;
+    color:#9fb0cc;cursor:pointer;font:inherit;font-size:13px;transition:.2s;
+  }
+  .pill:hover{border-color:#3b5079;color:var(--txt);}
+  .pill.on{
+    background:linear-gradient(180deg,#1b3a52,#12283a);
+    border-color:var(--net); color:var(--net);
+    box-shadow:0 0 18px rgba(34,211,238,.25);
+  }
+  input[type=text]{
+    background:#0a1120;border:1px solid #26344f;border-radius:9px;color:var(--txt);
+    padding:9px 12px;font:inherit;font-size:14px;width:172px;outline:none;transition:.2s;
+  }
+  input[type=text]:focus{border-color:var(--net);box-shadow:0 0 0 3px rgba(34,211,238,.12);}
+  input[type=text].bad{border-color:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.14);}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:200px;height:6px;border-radius:3px;
+    background:#1b2740;outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+    background:var(--net);cursor:pointer;box-shadow:0 0 14px rgba(34,211,238,.7);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px;height:18px;border:none;border-radius:50%;
+    background:var(--net);cursor:pointer;box-shadow:0 0 14px rgba(34,211,238,.7);
+  }
+  #cidrVal{color:var(--net);font-weight:700;font-size:14px;}
+  .btn{
+    padding:11px 24px;border-radius:10px;border:none;cursor:pointer;font:inherit;
+    font-size:13px;font-weight:700;letter-spacing:.6px;
+    background:linear-gradient(135deg,#22d3ee,#3b82f6);color:#04121c;
+    box-shadow:0 8px 22px rgba(34,211,238,.32);transition:.18s;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(34,211,238,.5);}
+  .btn:active{transform:translateY(0) scale(.98);}
+
+  /* ---------- region bar ---------- */
+  .regionbar{
+    display:flex;height:22px;border-radius:7px;overflow:hidden;
+    margin-bottom:16px;font-size:10px;font-weight:700;letter-spacing:.5px;
+  }
+  .regionbar div{
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;white-space:nowrap;
+    transition:flex-grow .45s cubic-bezier(.3,.9,.3,1);
+  }
+  .r-net{background:rgba(34,211,238,.22);color:var(--net);}
+  .r-sub{background:rgba(245,158,11,.24);color:var(--sub);}
+  .r-host{background:rgba(52,211,153,.20);color:var(--host);}
+
+  /* ---------- binary rows ---------- */
+  .bitrow{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+  .rowlabel{
+    width:132px;flex:none;font-size:10px;letter-spacing:.4px;
+    color:#8fa0bd;text-align:right;
+  }
+  .bits{display:flex;align-items:center;gap:2px;flex-wrap:nowrap;}
+  .cell{
+    width:21px;height:27px;display:flex;align-items:center;justify-content:center;
+    border-radius:5px;font-size:12px;font-weight:700;
+    background:#0a1120;border:1px solid #1a2540;
+    transition:opacity .25s ease, transform .25s ease,
+               background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+  .cell.net {color:var(--net); border-color:rgba(34,211,238,.35); background:rgba(34,211,238,.07);}
+  .cell.sub {color:var(--sub); border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.08);}
+  .cell.host{color:var(--host);border-color:rgba(52,211,153,.30);background:rgba(52,211,153,.06);}
+  .cell.dim {color:#33415c; border-color:#141d33; background:#080d18;}
+  .cell.hl  {background:var(--net)!important;color:#04121c!important;
+             border-color:var(--net)!important;box-shadow:0 0 16px var(--net);}
+  .cell.pre {opacity:0;transform:translateY(-9px) scale(.6);}
+  .dot{color:#33415c;padding:0 2px;font-weight:700;font-size:12px;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:16px;
+          padding-top:14px;border-top:1px dashed var(--line);font-size:11px;color:var(--muted);}
+  .legend span{display:flex;align-items:center;gap:7px;}
+  .sw{width:12px;height:12px;border-radius:3px;display:inline-block;}
+  .sw.net{background:rgba(34,211,238,.65);}
+  .sw.sub{background:rgba(245,158,11,.65);}
+  .sw.host{background:rgba(52,211,153,.65);}
+
+  /* ---------- result cards ---------- */
+  .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;}
+  .card{
+    background:linear-gradient(180deg,#111a2c,#0b1220);
+    border:1px solid var(--line);border-radius:11px;padding:12px 14px;
+    transition:opacity .38s ease, transform .38s cubic-bezier(.2,.9,.3,1.3), border-color .3s;
+  }
+  .card.pre{opacity:0;transform:translateY(16px) scale(.95);}
+  .card .k{font-size:9.5px;letter-spacing:1.3px;text-transform:uppercase;
+           color:var(--muted);margin-bottom:7px;}
+  .card .v{font-size:17px;font-weight:700;word-break:break-all;line-height:1.2;}
+  .card .f{font-size:10.5px;color:#5d6d8a;margin-top:5px;}
+  .card.hi{border-color:rgba(34,211,238,.5);box-shadow:0 0 22px rgba(34,211,238,.1);}
+  .card.hi .v{color:var(--net);}
+  .card.pink .v{color:var(--res);}
+  .card.amber .v{color:var(--sub);}
+  .card.green .v{color:var(--host);}
+
+  /* ---------- steps ---------- */
+  .steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;}
+  .steps li{
+    display:flex;gap:11px;align-items:flex-start;
+    font-size:12.5px;line-height:1.6;color:#b9c6dc;
+    background:#0b1220;border-left:2px solid var(--net);
+    border-radius:0 9px 9px 0;padding:10px 13px;
+    transition:opacity .38s ease, transform .38s ease;
+  }
+  .steps li.pre{opacity:0;transform:translateX(-16px);}
+  .steps li b{color:var(--net);}
+  .steps li em{color:var(--sub);font-style:normal;font-weight:700;}
+  .steps li .n{color:#3b4a68;font-weight:700;flex:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Subnetting <span>Animation</span> — Class A / B / C</h1>
+  <div class="tag">Pick a class, type an IP, drag the prefix slider, and watch the binary math happen.</div>
+
+  <!-- ============ CONTROLS ============ -->
+  <div class="panel">
+    <div class="controls">
+      <div class="field">
+        <label>Class</label>
+        <div class="pills">
+          <button class="pill on" data-cls="A">Class A</button>
+          <button class="pill" data-cls="B">Class B</button>
+          <button class="pill" data-cls="C">Class C</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>IP Address</label>
+        <input type="text" id="ip" value="10.0.0.1" spellcheck="false">
+      </div>
+
+      <div class="field">
+        <label>Prefix &nbsp;<span id="cidrVal">/8</span></label>
+        <input type="range" id="cidr" min="8" max="30" value="8">
+      </div>
+
+      <div class="field">
+        <label>&nbsp;</label>
+        <button class="btn" id="play">▶ ANIMATE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BINARY ============ -->
+  <div class="panel">
+    <div class="panel-title">Binary Breakdown</div>
+    <div class="regionbar" id="regionbar"></div>
+
+    <div class="bitrow" data-row="ip">
+      <div class="rowlabel">IP Address</div><div class="bits"></div>
+    </div>
+    <div class="bitrow" data-row="mask">
+      <div class="rowlabel">Subnet Mask</div><div class="bits"></div>
+    </div>
+    <div class="bitrow" data-row="net">
+      <div class="rowlabel">AND → Network</div><div class="bits"></div>
+    </div>
+    <div class="bitrow" data-row="wild">
+      <div class="rowlabel">Wildcard (NOT)</div><div class="bits"></div>
+    </div>
+    <div class="bitrow" data-row="bc">
+      <div class="rowlabel">OR → Broadcast</div><div class="bits"></div>
+    </div>
+
+    <div class="legend">
+      <span><i class="sw net"></i>Network bits (fixed by class)</span>
+      <span><i class="sw sub"></i>Subnet bits (borrowed)</span>
+      <span><i class="sw host"></i>Host bits</span>
+      <span>1 AND 1 = 1 &nbsp;·&nbsp; anything else = 0</span>
+    </div>
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div class="panel">
+    <div class="panel-title">Results</div>
+    <div class="results" id="results"></div>
+  </div>
+
+  <!-- ============ STEPS ============ -->
+  <div class="panel">
+    <div class="panel-title">Step-by-step</div>
+    <ul class="steps" id="steps"></ul>
+  </div>
+
+</div>
+
+<script>
+/* =====================================================
+   HELPERS
+   ===================================================== */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const SUP   = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+const sup   = n => String(n).split('').map(d => SUP[+d]).join('');
+const fmt   = n => n.toLocaleString('en-US');
+
+const CLASS_INFO = {
+  A:{ defaultCidr:8,  minCidr:8,  maxCidr:30, defaultIp:'10.0.0.1',     range:'1 – 126',   mask:'255.0.0.0'   },
+  B:{ defaultCidr:16, minCidr:16, maxCidr:30, defaultIp:'172.16.0.1',   range:'128 – 191', mask:'255.255.0.0' },
+  C:{ defaultCidr:24, minCidr:24, maxCidr:30, defaultIp:'192.168.1.1',  range:'192 – 223', mask:'255.255.255.0'}
+};
+
+const state = { cls:'A', ip:'10.0.0.1', cidr:8 };
+let animToken = 0;
+
+function parseIp(s){
+  const m = String(s).trim().match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if(!m) return null;
+  const p = m.slice(1).map(Number);
+  return p.some(x => x > 255) ? null : p;
+}
+function ipToInt(ip){
+  const p = ip.split('.').map(Number);
+  return (((p[0]<<24) | (p[1]<<16) | (p[2]<<8) | p[3]) >>> 0);
+}
+function intToIp(n){
+  n = n >>> 0;
+  return [(n>>>24)&255, (n>>>16)&255, (n>>>8)&255, n&255].join('.');
+}
+function intToBits(n){
+  return (n>>>0).toString(2).padStart(32,'0');
+}
+function classOf(firstOctet){
+  if(firstOctet >= 1   && firstOctet <= 126) return 'A';
+  if(firstOctet >= 128 && firstOctet <= 191) return 'B';
+  if(firstOctet >= 192 && firstOctet <= 223) return 'C';
+  return null;
+}
+
+/* =====================================================
+   ANIMATION PRIMITIVES
+   ===================================================== */
+function reveal(elements, step = 12, baseDelay = 0){
+  return new Promise(res => {
+    if(!elements.length) return res();
+    elements.forEach((el, i) => {
+      el.style.transitionDelay = (baseDelay + i * step) + 'ms';
+      el.classList.remove('pre');
+    });
+    const total = baseDelay + (elements.length - 1) * step + 280;
+    setTimeout(() => {
+      elements.forEach(el => el.style.transitionDelay = '');
+      res();
+    }, total);
+  });
+}
+
+async function sweep(aCells, bCells, rCells, alive){
+  for(let i = 0; i < 32; i++){
+    if(!alive()) return;
+    aCells[i].classList.add('hl');
+    bCells[i].classList.add('hl');
+    rCells[i].classList.remove('pre');
+    await sleep(24);
+    if(!alive()) return;
+    aCells[i].classList.remove('hl');
+    bCells[i].classList.remove('hl');
+  }
+  await sleep(220);
+}
+
+/* =====================================================
+   MAIN RENDER
+   ===================================================== */
+async function render(animate = true){
+  const token = ++animToken;
+  const alive = () => token === animToken;
+
+  const info   = CLASS_INFO[state.cls];
+  const ipEl   = document.getElementById('ip');
+  const parts  = parseIp(state.ip);
+  if(!parts){ ipEl.classList.add('bad'); return; }
+  ipEl.classList.remove('bad');
+
+  const cidr     = state.cidr;
+  const defCidr  = info.defaultCidr;
+  const ipInt    = ipToInt(state.ip);
+  const maskInt  = cidr === 0 ? 0 : ((0xFFFFFFFF << (32 - cidr)) >>> 0);
+  const netInt   = (ipInt & maskInt) >>> 0;
+  const wildInt  = (~maskInt) >>> 0;
+  const bcInt    = (netInt | wildInt) >>> 0;
+
+  const bits = {
+    ip:   intToBits(ipInt),
+    mask: intToBits(maskInt),
+    net:  intToBits(netInt),
+    wild: intToBits(wildInt),
+    bc:   intToBits(bcInt)
+  };
+
+  const subnetBits = cidr - defCidr;
+  const hostBits   = 32 - cidr;
+  const subnets    = Math.pow(2, subnetBits);
+  const hosts      = Math.pow(2, hostBits) - 2;
+
+  /* ---- mask bytes / block size ---- */
+  const maskBytes = [(maskInt>>>24)&255,(maskInt>>>16)&255,(maskInt>>>8)&255,maskInt&255];
+  let intIdx = -1;
+  for(let i = 0; i < 4; i++){
+    if(maskBytes[i] !== 255 && maskBytes[i] !== 0){ intIdx = i; break; }
+  }
+  const blockSize = intIdx === -1 ? 256 : 256 - maskBytes[intIdx];
+
+  const ctx = { defCidr, cidr };
+
+  /* ---- region bar ---- */
+  const bar = document.getElementById('regionbar');
+  bar.innerHTML = '';
+  [[defCidr,'r-net',`Network ${defCidr}`],
+   [subnetBits,'r-sub',`Subnet ${subnetBits}`],
+   [hostBits,'r-host',`Host ${hostBits}`]].forEach(([n, cls, label]) => {
+    if(n <= 0) return;
+    const d = document.createElement('div');
+    d.className = cls;
+    d.style.flexGrow = n;
+    d.style.flexBasis = '0';
+    d.textContent = n >= 4 ? label : '';
+    bar.appendChild(d);
+  });
+
+  /* ---- build bit rows ---- */
+  const bitClass = (i, bit, row) => {
+    const region = i < ctx.defCidr ? 'net' : (i < ctx.cidr ? 'sub' : 'host');
+    let c = 'cell ' + region;
+    const isResult = (row === 'net' || row === 'wild' || row === 'bc');
+    if(bit === '0' && (isResult || row === 'mask')) c += ' dim';
+    return c;
+  };
+
+  const cells = {};
+  for(const key of ['ip','mask','net','wild','bc']){
+    const container = document.querySelector(`.bitrow[data-row="${key}"] .bits`);
+    container.innerHTML = '';
+    const list = [];
+    for(let i = 0; i < 32; i++){
+      if(i > 0 && i % 8 === 0){
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.textContent = '.';
+        container.appendChild(dot);
+      }
+      const c = document.createElement('span');
+      c.className = bitClass(i, bits[key][i], key) + (animate ? ' pre' : '');
+      c.textContent = bits[key][i];
+      container.appendChild(c);
+      list.push(c);
+    }
+    cells[key] = list;
+  }
+
+  /* ---- results + steps (built now, revealed later) ---- */
+  buildResults({
+    subnets, hosts, subnetBits, hostBits, cidr, defCidr,
+    maskInt, wildInt, netInt, bcInt, blockSize, intIdx, maskBytes, info
+  }, animate);
+
+  buildSteps({
+    cls: state.cls, firstOctet: parts[0], info, cidr, defCidr,
+    subnetBits, hostBits, subnets, hosts, blockSize,
+    intIdx, maskBytes, netInt, bcInt
+  }, animate);
+
+  /* ---- animation sequence ---- */
+  if(animate){
+    await reveal(cells.ip, 12);            if(!alive()) return;
+    await reveal(cells.mask, 12);          if(!alive()) return;
+    await sweep(cells.ip, cells.mask, cells.net, alive); if(!alive()) return;
+    await reveal(cells.wild, 8);           if(!alive()) return;
+    await sweep(cells.net, cells.wild, cells.bc, alive); if(!alive()) return;
+
+    revealCards(); revealSteps();
+  } else {
+    revealCards(); revealSteps();
+  }
+}
+
+/* =====================================================
+   RESULTS CARDS
+   ===================================================== */
+let cardEls = [];
+function buildResults(d, animate){
+  const box = document.getElementById('results');
+  box.innerHTML = '';
+  cardEls = [];
+
+  const cards = [
+    { k:'Number of Subnets', v: fmt(d.subnets),
+      f:`2${sup(d.subnetBits)}  (${d.cidr} − ${d.defCidr} = ${d.subnetBits} bits)`, cls:'hi' },
+    { k:'Hosts per Subnet', v: fmt(d.hosts),
+      f:`2${sup(d.hostBits)} − 2  (${d.hostBits} host bits)`, cls:'hi' },
+    { k:'Block Size', v: d.blockSize === 256 ? '256' : d.blockSize,
+      f: d.intIdx === -1 ? 'whole octet' : `256 − ${d.maskBytes[d.intIdx]}`, cls:'amber' },
+    { k:'Subnet Mask', v: `${intToIp(d.maskInt)} /${d.cidr}`,
+      f:`class default ${d.info.mask}`, cls:'' },
+    { k:'Network Address', v: intToIp(d.netInt), f:'IP AND Mask', cls:'pink' },
+    { k:'Broadcast Address', v: intToIp(d.bcInt), f:'Network OR Wildcard', cls:'pink' },
+    { k:'First Valid IP', v: intToIp(d.netInt + 1), f:'Network + 1', cls:'green' },
+    { k:'Last Valid IP', v: intToIp(d.bcInt - 1), f:'Broadcast − 1', cls:'green' },
+    { k:'Wildcard Mask', v: intToIp(d.wildInt), f:'NOT Subnet Mask', cls:'' }
+  ];
+
+  cards.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'card ' + c.cls + (animate ? ' pre' : '');
+    el.innerHTML = `<div class="k">${c.k}</div>
+                    <div class="v">${c.v}</div>
+                    <div class="f">${c.f}</div>`;
+    box.appendChild(el);
+    cardEls.push(el);
+  });
+}
+function revealCards(){
+  cardEls.forEach((el, i) => {
+    el.style.transitionDelay = (i * 55) + 'ms';
+    el.classList.remove('pre');
+  });
+}
+
+/* =====================================================
+   STEPS
+   ===================================================== */
+let stepEls = [];
+function buildSteps(d, animate){
+  const box = document.getElementById('steps');
+  box.innerHTML = '';
+  stepEls = [];
+
+  const maskByte = d.intIdx === -1 ? null : d.maskBytes[d.intIdx];
+
+  const lines = [
+    `Class <b>${d.cls}</b> detected — first octet <b>${d.firstOctet}</b> falls in ${d.info.range}
+     → default mask <b>/${d.defCidr}</b> (${d.info.mask})`,
+
+    `Subnet bits borrowed = ${d.cidr} − ${d.defCidr} = <em>${d.subnetBits}</em>
+     → <b>Subnets = 2${sup(d.subnetBits)} = ${fmt(d.subnets)}</b>`,
+
+    `Host bits remaining = 32 − ${d.cidr} = <em>${d.hostBits}</em>
+     → <b>Hosts = 2${sup(d.hostBits)} − 2 = ${fmt(d.hosts)}</b>`,
+
+    maskByte === null
+      ? `Mask has no partial octet → block size is a <b>full octet (256)</b>`
+      : `Block size (magic number) = 256 − <em>${maskByte}</em> = <b>${d.blockSize}</b>`,
+
+    `Network address = IP <b>AND</b> Mask = <b>${intToIp(d.netInt)}</b> &nbsp;(watch row 3 in binary)`,
+
+    `Broadcast = Network <b>OR</b> Wildcard = <b>${intToIp(d.bcInt)}</b>
+     &nbsp;(also Network + Block − 1)`,
+
+    `Usable range → <b>${intToIp(d.netInt + 1)}</b> &nbsp;to&nbsp; <b>${intToIp(d.bcInt - 1)}</b>`
+  ];
+
+  lines.forEach((html, i) => {
+    const li = document.createElement('li');
+    li.className = animate ? 'pre' : '';
+    li.innerHTML = `<span class="n">${String(i + 1).padStart(2,'0')}</span><span>${html}</span>`;
+    box.appendChild(li);
+    stepEls.push(li);
+  });
+}
+function revealSteps(){
+  stepEls.forEach((el, i) => {
+    el.style.transitionDelay = (i * 70) + 'ms';
+    el.classList.remove('pre');
+  });
+}
+
+/* =====================================================
+   UI WIRING
+   ===================================================== */
+function setClass(cls, animate = true){
+  state.cls = cls;
+  document.querySelectorAll('.pill').forEach(p =>
+    p.classList.toggle('on', p.dataset.cls === cls));
+
+  const info = CLASS_INFO[cls];
+  state.ip   = info.defaultIp;
+  state.cidr = info.defaultCidr;
+
+  document.getElementById('ip').value = state.ip;
+
+  const sl = document.getElementById('cidr');
+  sl.min = info.minCidr;
+  sl.max = info.maxCidr;
+  sl.value = state.cidr;
+  document.getElementById('cidrVal').textContent = '/' + state.cidr;
+
+  render(animate);
+}
+
+document.querySelectorAll('.pill').forEach(p => {
+  p.addEventListener('click', () => setClass(p.dataset.cls, true));
+});
+
+/* prefix slider */
+document.getElementById('cidr').addEventListener('input', e => {
+  state.cidr = +e.target.value;
+  document.getElementById('cidrVal').textContent = '/' + state.cidr;
+  render(false);          // instant while dragging
+});
+document.getElementById('cidr').addEventListener('change', () => render(true));
+
+/* IP input */
+let debounce = null;
+const ipEl = document.getElementById('ip');
+
+ipEl.addEventListener('input', () => {
+  clearTimeout(debounce);
+  const val = ipEl.value.trim();
+  const p = parseIp(val);
+  if(!p){ ipEl.classList.add('bad'); return; }
+  ipEl.classList.remove('bad');
+  state.ip = val;
+
+  // auto-detect class from the first octet
+  const detected = classOf(p[0]);
+  if(detected && detected !== state.cls){
+    state.cls = detected;
+    document.querySelectorAll('.pill').forEach(x =>
+      x.classList.toggle('on', x.dataset.cls === detected));
+    const info = CLASS_INFO[detected];
+    const sl = document.getElementById('cidr');
+    sl.min = info.minCidr;
+    sl.max = info.maxCidr;
+    if(state.cidr < info.minCidr) state.cidr = info.minCidr;
+    if(state.cidr > info.maxCidr) state.cidr = info.maxCidr;
+    sl.value = state.cidr;
+    document.getElementById('cidrVal').textContent = '/' + state.cidr;
+  }
+
+  debounce = setTimeout(() => render(false), 350);
+});
+
+ipEl.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ clearTimeout(debounce); state.ip = ipEl.value.trim(); render(true); }
+});
+
+/* animate button */
+document.getElementById('play').addEventListener('click', () => {
+  state.ip = ipEl.value.trim();
+  render(true);
+});
+
+/* =====================================================
+   BOOT
+   ===================================================== */
+window.addEventListener('load', () => {
+  setTimeout(() => render(true), 250);
+});
+</script>
+</body>
+</html>
